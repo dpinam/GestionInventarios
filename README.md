@@ -10,15 +10,15 @@ Aplicación de consola en Java para gestionar los productos de una tienda en lí
 ```
 ProyectoInventario/
 ├── imagenes/                          # Imágenes de los productos (rutas guardadas en listImagenes)
-├── docs/                              # Notas de integración de los integrantes
+├── docs/                              # Notas de integración del proyecto
 └── src/inventario/
-    ├── Main.java                      # menu() de consola y rutina main()          (Integrante 3)
+    ├── Main.java                      # menu() de consola y rutina main()
     ├── estructuras/
-    │   ├── Producto.java              # Entidad Producto                          (Integrante 1)
-    │   ├── Nodo.java                  # Nodo de la lista enlazada                  (Integrante 1)
-    │   └── ListaProductos.java        # Lista enlazada simple + reporte de costos  (Integrantes 1 y 2)
+    │   ├── Producto.java              # Entidad Producto
+    │   ├── Nodo.java                  # Nodo de la lista enlazada
+    │   └── ListaProductos.java        # Lista enlazada simple + reporte de costos
     └── pruebas/
-        └── PruebasListaProductos.java # Pruebas de los métodos de la lista         (Integrante 2)
+        └── PruebasListaProductos.java # Pruebas de los métodos de la lista
 ```
 
 ## Opciones del menú
@@ -45,14 +45,9 @@ nombres duplicados y que la imagen exista dentro de la carpeta `imagenes/`.
 fuentes y ejecutar `inventario.Main`. El directorio de trabajo debe ser la raíz del proyecto para que
 el programa encuentre la carpeta `imagenes/`.
 
-**Terminal (JDK 11 o superior):**
+**Terminal:**
 ```bash
 javac -encoding UTF-8 -d out $(find src -name "*.java")
 java -cp out inventario.Main                        # programa
 java -cp out inventario.pruebas.PruebasListaProductos   # pruebas
 ```
-
-## Distribución del trabajo
-- **Integrante 1:** modelo de datos (`Producto`, `Nodo`, `ListaProductos`).
-- **Integrante 2:** lógica de negocio, reporte de costos y pruebas.
-- **Integrante 3:** menú de consola, clase `Main`, integración y entrega.
