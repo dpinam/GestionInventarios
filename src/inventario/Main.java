@@ -1,7 +1,8 @@
 package inventario;
 
-import inventario.estructuras.ListaProductos;
+import inventario.estructuras.Cliente;
 import inventario.estructuras.Producto;
+import inventario.estructuras.Tienda;
 
 import java.io.File;
 import java.time.LocalDate;
@@ -13,10 +14,11 @@ import java.util.Scanner;
 /**
  * Clase funcional del sistema de gestión de inventarios.
  *
- * Contiene el menú de consola (menu()) que permite al usuario interactuar
- * con la ListaProductos, y la rutina main() que lo ejecuta.
+ * Contiene el menú de consola (menu()) que permite al usuario interactuar con
+ * la Tienda (inventario en un árbol binario de búsqueda y cola de clientes por
+ * prioridad), y la rutina main() que lo ejecuta.
  *
- * Universidad CENFOTEC - SOFT-10 Estructuras de Datos - Primer avance.
+ * Universidad CENFOTEC - SOFT-10 Estructuras de Datos - Segundo avance.
  *
  * @author Integrante 3 (menú, Main e integración)
  */
@@ -35,8 +37,11 @@ public class Main {
     /** Opción del menú que termina el programa. */
     private static final int OPCION_SALIR = 0;
 
-    /** Lista enlazada simple que almacena los productos del inventario. */
-    private static final ListaProductos inventario = new ListaProductos();
+    /** Última opción numerada del menú. */
+    private static final int ULTIMA_OPCION = 10;
+
+    /** Tienda que contiene el inventario (ArbolProductos) y la ColaClientes. */
+    private static final Tienda tienda = new Tienda("Tienda en línea");
 
     /** Lector de la entrada estándar, compartido por todo el programa. */
     private static final Scanner scanner = new Scanner(System.in);
@@ -70,7 +75,7 @@ public class Main {
 
         do {
             mostrarOpciones();
-            opcion = leerEntero("Seleccione una opción: ", 0, 9);
+            opcion = leerEntero("Seleccione una opción: ", 0, ULTIMA_OPCION);
             System.out.println();
 
             ejecutarOpcion(opcion);
@@ -84,22 +89,26 @@ public class Main {
     private static void mostrarBienvenida() {
         System.out.println("==================================================");
         System.out.println("       SISTEMA DE GESTIÓN DE INVENTARIOS");
-        System.out.println("        Tienda en línea - Primer avance");
+        System.out.println("       Tienda en línea - Segundo avance");
         System.out.println("==================================================");
     }
 
     private static void mostrarOpciones() {
         System.out.println();
         System.out.println("------------------ MENÚ PRINCIPAL ------------------");
-        System.out.println("  1. Agregar producto al INICIO de la lista");
-        System.out.println("  2. Agregar producto al FINAL de la lista");
-        System.out.println("  3. Ver todos los productos");
-        System.out.println("  4. Buscar un producto");
-        System.out.println("  5. Modificar un producto");
-        System.out.println("  6. Agregar imagen a un producto");
-        System.out.println("  7. Eliminar un producto");
-        System.out.println("  8. Reporte de costos totales");
-        System.out.println("  9. Cargar productos de ejemplo");
+        System.out.println("  --- Inventario ---");
+        System.out.println("  1. Agregar producto al inventario");
+        System.out.println("  2. Ver inventario (orden alfabético)");
+        System.out.println("  3. Buscar un producto");
+        System.out.println("  4. Modificar un producto");
+        System.out.println("  5. Agregar imagen a un producto");
+        System.out.println("  6. Eliminar un producto");
+        System.out.println("  --- Clientes ---");
+        System.out.println("  7. Registrar cliente en la cola (llenar su carrito)");
+        System.out.println("  8. Ver cola de clientes");
+        System.out.println("  9. Atender al siguiente cliente (imprimir factura)");
+        System.out.println("  --- Otros ---");
+        System.out.println(" 10. Cargar datos de ejemplo");
         System.out.println("  0. Salir");
         System.out.println("----------------------------------------------------");
     }
@@ -112,30 +121,33 @@ public class Main {
     private static void ejecutarOpcion(int opcion) {
         switch (opcion) {
             case 1:
-                insertarProducto(true);
+                insertarProducto();
                 break;
             case 2:
-                insertarProducto(false);
+                verInventario();
                 break;
             case 3:
-                verProductos();
-                break;
-            case 4:
                 buscarProducto();
                 break;
-            case 5:
+            case 4:
                 modificarProducto();
                 break;
-            case 6:
+            case 5:
                 agregarImagen();
                 break;
-            case 7:
+            case 6:
                 eliminarProducto();
                 break;
+            case 7:
+                registrarCliente();
+                break;
             case 8:
-                mostrarReporteCostos();
+                verColaClientes();
                 break;
             case 9:
+                atenderSiguienteCliente();
+                break;
+            case 10:
                 cargarDatosEjemplo();
                 break;
             case OPCION_SALIR:
@@ -147,22 +159,17 @@ public class Main {
     }
 
     // =====================================================================
-    //  OPCIONES DEL MENÚ
+    //  OPCIONES DEL MENÚ - INVENTARIO
     // =====================================================================
 
-    /**
-     * Opciones 1 y 2: solicita los datos de un producto y lo inserta al
-     * inicio o al final de la lista.
-     *
-     * @param alInicio true para insertar al inicio, false para insertar al final.
-     */
-    private static void insertarProducto(boolean alInicio) {
-        System.out.println(">> AGREGAR PRODUCTO AL " + (alInicio ? "INICIO" : "FINAL"));
+    /** Opción 1: solicita los datos de un producto y lo inserta en el inventario (árbol). */
+    private static void insertarProducto() {
+        System.out.println(">> AGREGAR PRODUCTO AL INVENTARIO");
 
         String nombre = leerTextoNoVacio("Nombre del producto: ");
-        if (inventario.buscarProducto(nombre) != null) {
+        if (tienda.buscarProducto(nombre) != null) {
             System.out.println("Ya existe un producto llamado \"" + nombre
-                    + "\". Use la opción 5 para modificarlo.");
+                    + "\". Use la opción 4 para modificarlo.");
             return;
         }
 
@@ -173,33 +180,32 @@ public class Main {
 
         Producto nuevoProducto = new Producto(nombre, precio, categoria, fecha, cantidad);
 
-        if (alInicio) {
-            inventario.insertarInicio(nuevoProducto);
+        if (tienda.agregarProducto(nuevoProducto)) {
+            System.out.println("Producto \"" + nombre + "\" agregado al inventario con éxito.");
         } else {
-            inventario.insertarFinal(nuevoProducto);
+            System.out.println("No se pudo agregar el producto.");
+            return;
         }
-        System.out.println("Producto \"" + nombre + "\" agregado al "
-                + (alInicio ? "inicio" : "final") + " con éxito.");
 
         if (leerSiNo("¿Desea agregarle una imagen ahora? (s/n): ")) {
             solicitarImagen(nombre);
         }
     }
 
-    /** Opción 3: muestra todos los productos de la lista. */
-    private static void verProductos() {
-        System.out.println(">> LISTA DE PRODUCTOS");
-        inventario.mostrarProductos();
+    /** Opción 2: muestra el inventario ordenado alfabéticamente (recorrido in-orden). */
+    private static void verInventario() {
+        System.out.println(">> INVENTARIO DE LA TIENDA");
+        tienda.getInventario().mostrarProductos();
     }
 
-    /** Opción 4: busca un producto por nombre y muestra su detalle. */
+    /** Opción 3: busca un producto por nombre y muestra su detalle. */
     private static void buscarProducto() {
         System.out.println(">> BUSCAR PRODUCTO");
-        if (avisarSiVacio()) {
+        if (avisarSiInventarioVacio()) {
             return;
         }
 
-        Producto producto = inventario.buscarProducto(leerTextoNoVacio("Nombre del producto: "));
+        Producto producto = tienda.buscarProducto(leerTextoNoVacio("Nombre del producto: "));
         if (producto == null) {
             System.out.println("Producto no encontrado.");
             return;
@@ -208,16 +214,16 @@ public class Main {
     }
 
     /**
-     * Opción 5: modifica un producto existente. Para cada dato se muestra el
+     * Opción 4: modifica un producto existente. Para cada dato se muestra el
      * valor actual entre corchetes; si el usuario presiona Enter, se conserva.
      */
     private static void modificarProducto() {
         System.out.println(">> MODIFICAR PRODUCTO");
-        if (avisarSiVacio()) {
+        if (avisarSiInventarioVacio()) {
             return;
         }
 
-        Producto producto = inventario.buscarProducto(leerTextoNoVacio("Nombre del producto a modificar: "));
+        Producto producto = tienda.buscarProducto(leerTextoNoVacio("Nombre del producto a modificar: "));
         if (producto == null) {
             System.out.println("Producto no encontrado.");
             return;
@@ -229,7 +235,7 @@ public class Main {
         String nombreActual = producto.getNombre();
         String nuevoNombre = leerTextoConDefecto("Nuevo nombre", nombreActual);
 
-        Producto otro = inventario.buscarProducto(nuevoNombre);
+        Producto otro = tienda.buscarProducto(nuevoNombre);
         if (otro != null && otro != producto) {
             System.out.println("Ya existe otro producto llamado \"" + nuevoNombre
                     + "\". No se realizaron cambios.");
@@ -241,25 +247,22 @@ public class Main {
         String nuevaFecha = leerFechaConDefecto(producto.getFechaVencimiento());
         int nuevaCantidad = leerEnteroConDefecto("Nueva cantidad", producto.getCantidad());
 
-        // Nombre, precio y cantidad se actualizan mediante el método de la lista.
-        if (inventario.modificarProducto(nombreActual, nuevoNombre, nuevoPrecio, nuevaCantidad)) {
-            // Categoría y fecha se actualizan sobre el mismo producto de la lista.
-            producto.setCategoria(nuevaCategoria);
-            producto.setFechaVencimiento(nuevaFecha);
+        if (tienda.modificarProducto(nombreActual, nuevoNombre, nuevoPrecio,
+                nuevaCategoria, nuevaFecha, nuevaCantidad)) {
             System.out.println("Producto modificado con éxito.");
         } else {
             System.out.println("No se pudo modificar el producto.");
         }
     }
 
-    /** Opción 6: agrega una imagen a un producto existente. */
+    /** Opción 5: agrega una imagen a un producto existente. */
     private static void agregarImagen() {
         System.out.println(">> AGREGAR IMAGEN A UN PRODUCTO");
-        if (avisarSiVacio()) {
+        if (avisarSiInventarioVacio()) {
             return;
         }
 
-        Producto producto = inventario.buscarProducto(leerTextoNoVacio("Nombre del producto: "));
+        Producto producto = tienda.buscarProducto(leerTextoNoVacio("Nombre del producto: "));
         if (producto == null) {
             System.out.println("Producto no encontrado.");
             return;
@@ -267,15 +270,15 @@ public class Main {
         solicitarImagen(producto.getNombre());
     }
 
-    /** Opción 7: elimina un producto después de pedir confirmación. */
+    /** Opción 6: elimina un producto del inventario después de pedir confirmación. */
     private static void eliminarProducto() {
         System.out.println(">> ELIMINAR PRODUCTO");
-        if (avisarSiVacio()) {
+        if (avisarSiInventarioVacio()) {
             return;
         }
 
         String nombre = leerTextoNoVacio("Nombre del producto a eliminar: ");
-        if (inventario.buscarProducto(nombre) == null) {
+        if (tienda.buscarProducto(nombre) == null) {
             System.out.println("Producto no encontrado.");
             return;
         }
@@ -285,39 +288,146 @@ public class Main {
             return;
         }
 
-        if (inventario.eliminarProducto(nombre)) {
+        if (tienda.eliminarProducto(nombre)) {
             System.out.println("Producto eliminado con éxito.");
         } else {
             System.out.println("No se pudo eliminar el producto.");
         }
     }
 
-    /** Opción 8: imprime el reporte de costos por producto y el total acumulado. */
-    private static void mostrarReporteCostos() {
-        inventario.imprimirReporteCostos();
+    // =====================================================================
+    //  OPCIONES DEL MENÚ - CLIENTES
+    // =====================================================================
+
+    /**
+     * Opción 7: crea un cliente, llena su carrito con productos disponibles en
+     * el inventario y lo inserta en la cola de clientes según su prioridad.
+     */
+    private static void registrarCliente() {
+        System.out.println(">> REGISTRAR CLIENTE EN LA COLA");
+        if (avisarSiInventarioVacio()) {
+            return;
+        }
+
+        String nombre = leerTextoNoVacio("Nombre del cliente: ");
+        System.out.println("Tipo de cliente:  1 = Básico   2 = Afiliado a la tienda   3 = Premium");
+        int prioridad = leerEntero("Prioridad (1-3): ", 1, 3);
+
+        Cliente cliente = new Cliente(nombre, prioridad);
+
+        System.out.println("\n-- Llenado del carrito (productos disponibles) --");
+        boolean otro;
+        do {
+            if (tienda.getInventario().estaVacio()) {
+                System.out.println("Ya no quedan productos en el inventario.");
+                break;
+            }
+            tienda.getInventario().mostrarProductos();
+            agregarProductoAlCarrito(cliente);
+            otro = leerSiNo("¿Desea agregar otro producto al carrito? (s/n): ");
+        } while (otro);
+
+        if (cliente.getCarrito().estaVacia()) {
+            System.out.println("El carrito quedó vacío: el cliente no fue agregado a la cola.");
+            return;
+        }
+
+        tienda.registrarCliente(cliente);
+        System.out.printf("Cliente \"%s\" (%s) agregado a la cola. Total del carrito: $%.2f%n",
+                cliente.getNombre(), cliente.getTipo(), cliente.calcularTotal());
     }
 
-    /** Opción 9: carga productos de prueba para facilitar la demostración. */
+    /** Pide un producto y una cantidad y los agrega al carrito del cliente. */
+    private static void agregarProductoAlCarrito(Cliente cliente) {
+        String nombreProducto = leerTextoNoVacio("Nombre del producto a comprar: ");
+        Producto enInventario = tienda.buscarProducto(nombreProducto);
+
+        if (enInventario == null) {
+            System.out.println("Producto no encontrado en el inventario.");
+            return;
+        }
+        if (enInventario.getCantidad() == 0) {
+            System.out.println("\"" + enInventario.getNombre() + "\" está agotado.");
+            return;
+        }
+
+        int cantidad = leerEntero("Cantidad (disponibles: " + enInventario.getCantidad() + "): ",
+                1, Integer.MAX_VALUE);
+
+        if (tienda.agregarAlCarrito(cliente, nombreProducto, cantidad)) {
+            System.out.println("Agregado al carrito: " + cantidad + " x " + enInventario.getNombre());
+        } else {
+            System.out.println("No hay existencias suficientes de \"" + enInventario.getNombre()
+                    + "\" (disponibles: " + enInventario.getCantidad() + ").");
+        }
+    }
+
+    /** Opción 8: muestra los clientes en el orden en que serán atendidos. */
+    private static void verColaClientes() {
+        System.out.println(">> COLA DE CLIENTES (orden de atención)");
+        tienda.getColaClientes().mostrarCola();
+    }
+
+    /** Opción 9: atiende al siguiente cliente e imprime la factura de su carrito. */
+    private static void atenderSiguienteCliente() {
+        System.out.println(">> ATENDER AL SIGUIENTE CLIENTE");
+
+        Cliente atendido = tienda.atenderSiguiente();
+        if (atendido == null) {
+            System.out.println("No hay clientes en la cola.");
+            return;
+        }
+
+        System.out.println("Atendiendo a: " + atendido.getNombre());
+        System.out.print(atendido.generarFactura());
+        System.out.println("Clientes restantes en la cola: " + tienda.getColaClientes().getTamano());
+    }
+
+    /**
+     * Opción 10: carga productos y clientes de prueba para facilitar la
+     * demostración. Los clientes solo se cargan junto con los productos.
+     */
     private static void cargarDatosEjemplo() {
-        System.out.println(">> CARGAR PRODUCTOS DE EJEMPLO");
+        System.out.println(">> CARGAR DATOS DE EJEMPLO");
 
         Producto[] ejemplos = {
             new Producto("Leche entera", 950.00, "Lácteos", "31/12/2026", 24),
             new Producto("Arroz 2kg", 2100.00, "Granos", "15/08/2027", 40),
-            new Producto("Audífonos", 15500.00, "Electrónica", SIN_FECHA, 5)
+            new Producto("Audífonos", 15500.00, "Electrónica", SIN_FECHA, 5),
+            new Producto("Café molido", 3200.00, "Bebidas", "30/06/2027", 15),
+            new Producto("Pan integral", 1800.00, "Panadería", "20/11/2026", 10)
         };
-        String[] imagenes = {"leche.png", "arroz.png", "audifonos.png"};
+        String[] imagenes = {"leche.png", "arroz.png", "audifonos.png", null, null};
 
         int agregados = 0;
         for (int i = 0; i < ejemplos.length; i++) {
-            if (inventario.buscarProducto(ejemplos[i].getNombre()) == null) {
-                inventario.insertarFinal(ejemplos[i]);
-                inventario.agregarImagenAProducto(ejemplos[i].getNombre(),
-                        CARPETA_IMAGENES + "/" + imagenes[i]);
+            if (tienda.agregarProducto(ejemplos[i])) {
+                if (imagenes[i] != null) {
+                    tienda.agregarImagenAProducto(ejemplos[i].getNombre(),
+                            CARPETA_IMAGENES + "/" + imagenes[i]);
+                }
                 agregados++;
             }
         }
         System.out.println("Se agregaron " + agregados + " producto(s) de ejemplo.");
+
+        if (agregados == ejemplos.length) {
+            cargarClienteEjemplo("Ana Rojas", 1, "Leche entera", 2, "Arroz 2kg", 1);
+            cargarClienteEjemplo("Luis Mora", 3, "Audífonos", 1, "Café molido", 2);
+            cargarClienteEjemplo("María Solano", 2, "Pan integral", 3, "Leche entera", 4);
+            cargarClienteEjemplo("Pedro Vargas", 3, "Arroz 2kg", 5, "Café molido", 1);
+            System.out.println("Se registraron 4 clientes de ejemplo. Use la opción 8 para ver el orden de atención.");
+        }
+    }
+
+    /** Crea un cliente de ejemplo con dos productos en el carrito y lo encola. */
+    private static void cargarClienteEjemplo(String nombre, int prioridad,
+                                             String producto1, int cantidad1,
+                                             String producto2, int cantidad2) {
+        Cliente cliente = new Cliente(nombre, prioridad);
+        tienda.agregarAlCarrito(cliente, producto1, cantidad1);
+        tienda.agregarAlCarrito(cliente, producto2, cantidad2);
+        tienda.registrarCliente(cliente);
     }
 
     // =====================================================================
@@ -330,8 +440,8 @@ public class Main {
         System.out.printf("  Precio:        $%.2f%n", producto.getPrecio());
         System.out.println("  Categoría:     " + producto.getCategoria());
         System.out.println("  Vencimiento:   " + producto.getFechaVencimiento());
-        System.out.println("  Cantidad:      " + producto.getCantidad());
-        System.out.printf("  Costo total:   $%.2f%n", producto.getPrecio() * producto.getCantidad());
+        System.out.println("  Disponibles:   " + producto.getCantidad());
+        System.out.printf("  Valor en stock: $%.2f%n", producto.getPrecio() * producto.getCantidad());
 
         if (producto.getListImagenes().isEmpty()) {
             System.out.println("  Imágenes:      ninguna");
@@ -373,7 +483,7 @@ public class Main {
             return;
         }
 
-        if (inventario.agregarImagenAProducto(nombreProducto, ruta)) {
+        if (tienda.agregarImagenAProducto(nombreProducto, ruta)) {
             System.out.println("Imagen agregada con éxito: " + ruta);
         } else {
             System.out.println("No se pudo agregar la imagen.");
@@ -385,9 +495,9 @@ public class Main {
      *
      * @return true si el inventario está vacío.
      */
-    private static boolean avisarSiVacio() {
-        if (inventario.estaVacia()) {
-            System.out.println("El inventario está vacío. Agregue productos primero (opciones 1, 2 o 9).");
+    private static boolean avisarSiInventarioVacio() {
+        if (tienda.getInventario().estaVacio()) {
+            System.out.println("El inventario está vacío. Agregue productos primero (opciones 1 o 10).");
             return true;
         }
         return false;
