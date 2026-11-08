@@ -199,6 +199,28 @@ public class ListaProductos {
     }
 
     /**
+     * [Segundo avance] Genera una línea por producto con cantidad, precio
+     * unitario y subtotal (precio * cantidad). Se utiliza para la factura del
+     * carrito de un Cliente.
+     *
+     * @return detalle de líneas, vacío si la lista no tiene productos.
+     */
+    public String generarDetalleLineas() {
+        StringBuilder detalle = new StringBuilder();
+        Nodo actual = cabeza;
+
+        while (actual != null) {
+            Producto p = actual.getProducto();
+            detalle.append(String.format("%-20s %3d x $%10.2f = $%11.2f%n",
+                    p.getNombre(), p.getCantidad(), p.getPrecio(),
+                    p.getPrecio() * p.getCantidad()));
+            actual = actual.getSiguiente();
+        }
+
+        return detalle.toString();
+    }
+
+    /**
      * [Integración - Integrante 3] Indica si la lista no tiene productos.
      *
      * @return true si la lista está vacía.
